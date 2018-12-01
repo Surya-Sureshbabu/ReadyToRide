@@ -1,0 +1,334 @@
+package com.example.user.readytorides;
+
+
+import android.app.ProgressDialog;
+import android.content.Intent;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
+import android.os.AsyncTask;
+import android.provider.MediaStore;
+import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
+import android.util.Base64;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.Toast;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.util.HashMap;
+
+
+public class Filesupload extends AppCompatActivity {
+    Helper helper;
+    Button photo,medical,sign,submit;
+    String btn_id;
+    public static final String UPLOAD_URL ="https://readytoride.000webhostapp.com/ReadyToRide/upload_file.php";
+    public static final String UPLOAD_KEY_PHOTO = "image";
+    public static final String UPLOAD_KEY_MEDICAL = "medical";
+    public static final String UPLOAD_KEY_SIGN = "sign";
+    public static final String TAG = "MY MESSAGE";
+    String name,gender,dob,blood,qualif,mobile,identification,email,address,vehicle_type,aadhar;
+    private int PICK_IMAGE_REQUEST = 1;
+    RequestHandler rh;
+    String text="Timeout";
+    private Bitmap bitmap_photo,bitmap_medical,bitmap_sign;
+    private Bitmap bitmap;
+
+    private Uri filePath;
+
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_filesupload);
+        helper=new Helper(this);
+        photo=(Button)findViewById(R.id.btn_photo);
+        medical=(Button)findViewById(R.id.btn_medical);
+        sign=(Button)findViewById(R.id.btn_sign);
+        submit=(Button)findViewById(R.id.btn_submit);
+        rh=new RequestHandler();
+        Intent i=getIntent();
+        name=i.getStringExtra(helper.name);
+        gender=i.getStringExtra(helper.gender);
+        dob=i.getStringExtra(helper.dob);
+        blood=i.getStringExtra(helper.blood_group);
+        identification=i.getStringExtra(helper.identification);
+        qualif=i.getStringExtra(helper.qualification);
+        email=i.getStringExtra(helper.email);
+        address=i.getStringExtra(helper.address);
+        vehicle_type=i.getStringExtra(helper.vehicle_type);
+        aadhar=i.getStringExtra(helper.aadhar);
+        mobile=i.getStringExtra(helper.contact);
+      //  Toast.makeText(Filesupload.this,name,Toast.LENGTH_LONG).show();
+        submit.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+
+
+                if(bitmap_photo!=null) {
+                    if(bitmap_medical!=null)
+                    {
+                        if(bitmap_sign!=null)
+                        {
+                            rh.trustEveryone();
+                            String res=insertDetails();
+
+                        }
+                        else
+                        {
+                            helper.showMessageDialog("Please choose your signature");
+                        }
+                    }
+                    else
+                    {
+                        helper.showMessageDialog("Please upload your medical certificate");
+                    }
+                }
+                else
+                {
+                    helper.showMessageDialog("Please choose your photo");
+                }
+            }
+        });
+
+        photo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                btn_id="photo";
+                // Intent fetch_image=new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                // startActivityForResult(fetch_image,0);
+                showFileChooser();
+            }
+        });
+        medical.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                btn_id="medical";
+                showFileChooser();
+            }
+        });
+        sign.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                btn_id="sign";
+                showFileChooser();
+            }
+        });
+    }
+    @Override
+    public  void onActivityResult(int requestCode,int resultCode,Intent data)
+    {
+        super.onActivityResult(requestCode,resultCode,data);
+        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
+
+            filePath = data.getData();
+            try {
+                if(btn_id.equals("photo")) {
+                    bitmap_photo = MediaStore.Images.Media.getBitmap(getContentResolver(), filePath);
+                    // Toast.makeText(Filesupload.this,"Photo Selected",Toast.LENGTH_LONG).show();
+                    photo.setText("Change");
+                }
+                else if(btn_id.equals("medical"))
+                {
+                    bitmap_medical = MediaStore.Images.Media.getBitmap(getContentResolver(), filePath);
+                    // Toast.makeText(Filesupload.this,"Medical Selected",Toast.LENGTH_LONG).show();
+                    medical.setText("Change");
+                }
+                else if(btn_id.equals("sign"))
+                {
+                    bitmap_sign = MediaStore.Images.Media.getBitmap(getContentResolver(), filePath);
+                    // Toast.makeText(Filesupload.this,"Sign Selected",Toast.LENGTH_LONG).show();
+                    sign.setText("Change");
+                }
+                // imageView.setImageBitmap(bitmap);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    public String getStringImage(Bitmap bmp){
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        bmp.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+        byte[] imageBytes = baos.toByteArray();
+        String encodedImage = Base64.encodeToString(imageBytes, Base64.DEFAULT);
+        return encodedImage;
+    }
+    private void showFileChooser() {
+        Intent intent = new Intent();
+        intent.setType("image/*");
+        intent.setAction(Intent.ACTION_GET_CONTENT);
+        startActivityForResult(Intent.createChooser(intent, "Select Picture"), PICK_IMAGE_REQUEST);
+    }
+
+    private void uploadImage(){
+
+        class UploadImage extends AsyncTask<Bitmap,Void,String>{
+
+            ProgressDialog loading;
+
+
+            @Override
+            protected void onPreExecute() {
+                super.onPreExecute();
+                loading = ProgressDialog.show(Filesupload.this, "Uploading Image", "Please wait...",true,true);
+            }
+
+            @Override
+            protected void onPostExecute(String s) {
+                super.onPostExecute(s);
+                loading.dismiss();
+                //Toast.makeText(getApplicationContext(),s,Toast.LENGTH_LONG).show();
+                if(s.equals("Success"))
+                {
+                    helper.showMessageDialog("Registration Successfully Completed");
+                    // finishAffinity();
+                    // System.exit(0);
+                    // Intent i=new Intent(Filesupload.this,Registration_PersonalInfo.class);
+                    // startActivity(i);
+                }
+                else
+                {
+                    helper.showMessageDialog("Failed to connect to server");
+                }
+                //Log.d("Message:",s);
+            }
+
+            @Override
+            protected String doInBackground(Bitmap... params) {
+                Bitmap bitmap = params[0];
+                Bitmap med=params[1];
+                Bitmap si=params[2];
+                String uploadImage = getStringImage(bitmap);
+                String medic=getStringImage(med);
+                String signa=getStringImage(si);
+
+                HashMap<String,String> data = new HashMap<>();
+                data.put(UPLOAD_KEY_PHOTO, uploadImage);
+                data.put(UPLOAD_KEY_MEDICAL,medic);
+                data.put(UPLOAD_KEY_SIGN,signa);
+
+                String result = rh.sendPostRequest(UPLOAD_URL,data);
+
+                return result;
+            }
+        }
+
+
+
+        UploadImage ui = new UploadImage();
+        ui.execute(bitmap_photo,bitmap_medical,bitmap_sign);
+        //if(btn_id.equals("photo")) {
+        //  ui.execute(bitmap_photo);
+        // }
+        //ui.execute(bit)
+    }
+
+
+
+    String insertDetails()
+    {
+        class PostData extends AsyncTask<String,Void,String>
+        {
+            String url_reg="https://readytoride.000webhostapp.com/ReadyToRide/Registration.php";
+            ProgressDialog dlog;
+
+            @Override
+            protected void onPreExecute() {
+                super.onPreExecute();
+                dlog=ProgressDialog.show(Filesupload.this,"Please Wait..","Processing Request..",true,true);
+            }
+
+            @Override
+            protected String doInBackground(String... params) {
+                //String
+
+                try
+                {
+                    URL url=new URL(url_reg);
+                    HttpURLConnection con=(HttpURLConnection)url.openConnection();
+                    con.setRequestMethod("POST");
+                    con.setDoOutput(true);
+                    OutputStream outstream=con.getOutputStream();
+                    String data="";
+
+                    data = URLEncoder.encode("name", "UTF-8") + "=" + URLEncoder.encode(name, "UTF-8") + "&" +
+                            URLEncoder.encode("gender", "UTF-8") + "=" + URLEncoder.encode(gender, "UTF-8") + "&" +
+                            URLEncoder.encode("dob", "UTF-8") + "=" + URLEncoder.encode(dob, "UTF-8") + "&" +
+                            URLEncoder.encode("aadhar", "UTF-8") + "=" + URLEncoder.encode(aadhar, "UTF-8") + "&" +
+                            URLEncoder.encode("blood", "UTF-8") + "=" + URLEncoder.encode(blood, "UTF-8") + "&" +
+                            URLEncoder.encode("identif", "UTF-8") + "=" + URLEncoder.encode(identification, "UTF-8") + "&" +
+                            URLEncoder.encode("qual", "UTF-8") + "=" + URLEncoder.encode(qualif, "UTF-8") + "&" +
+                            URLEncoder.encode("address", "UTF-8") + "=" + URLEncoder.encode(address, "UTF-8") + "&" +
+                            URLEncoder.encode("mob", "UTF-8") + "=" + URLEncoder.encode(mobile, "UTF-8") + "&" +
+                            URLEncoder.encode("email", "UTF-8") + "=" + URLEncoder.encode(email, "UTF-8") + "&" +
+                            URLEncoder.encode("vehicle", "UTF-8") + "=" + URLEncoder.encode(vehicle_type, "UTF-8");
+
+
+
+                    BufferedWriter bufferedWriter=new BufferedWriter(new OutputStreamWriter(outstream,"UTF-8"));
+                    bufferedWriter.write(data);
+                    bufferedWriter.flush();
+                    int statusCode = con.getResponseCode();
+                    if (statusCode == 200) {
+
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(con.getInputStream()));
+                        StringBuilder sb = new StringBuilder();
+                        String line;
+
+                        while ((line = reader.readLine()) != null)
+                            sb.append(line).append("\n");
+
+                        text = "Success";
+                        bufferedWriter.close();
+                    }
+
+                } catch (MalformedURLException e) {
+                    e.printStackTrace();
+                    text = e.getMessage();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    text = e.getMessage();
+                }
+                return text;
+            }
+
+
+
+            @Override
+            protected void onPostExecute(String result) {
+                super.onPostExecute(result);
+                dlog.dismiss();
+                // Log.e("Messages:",result);
+                //Toast.makeText(getApplicationContext(),st+" "+result,Toast.LENGTH_LONG).show();
+                if(result.equals("Success"))
+                {
+                    uploadImage();
+                }
+                // helper.showMessageDialog(result);
+            }
+
+
+
+        }
+        PostData post_data=new PostData();
+        post_data.execute();
+        return text;
+    }
+}

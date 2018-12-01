@@ -1,0 +1,57 @@
+package com.example.user.readytorides;
+
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class Helper {
+    Context context;
+    public String name="name",gender="gender",dob="dob",aadhar="aadhar",blood_group="blood",identification="identif";
+    public String email="email",address="address",contact="contact",qualification="qual",vehicle_type="v_type";
+    AlertDialog dialog;
+    public Helper(Context c) {
+        context=c;
+    }
+
+    public void showMessageDialog(String message)
+    {
+
+        AlertDialog.Builder ab=new AlertDialog.Builder(context);
+        ab.setTitle("LISTEN");
+        ab.setMessage(message);
+        ab.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                dialog.dismiss();
+            }
+        });
+        dialog=ab.create();
+        dialog.show();
+    }
+    public boolean isValidAadharNumber(String number)
+    {
+        Pattern p=Pattern.compile("(\\d{12})");
+        Matcher m = p.matcher(number);
+        return (m.find() && m.group().equals(number));
+
+    }
+    public boolean isvalidMobileNumber(String mobile)
+    {
+        Pattern p=Pattern.compile("(\\d{10})");
+        Matcher m = p.matcher(mobile);
+        return (m.find() && m.group().equals(mobile));
+
+    }
+    // validating email id
+    public boolean isValidEmail(String email) {
+        String EMAIL_PATTERN = "^[_A-Za-z0-9-\\+]+(\\.[_A-Za-z0-9-]+)*@"
+                + "[A-Za-z0-9-]+(\\.[A-Za-z0-9]+)*(\\.[A-Za-z]{2,})$";
+
+        Pattern pattern = Pattern.compile(EMAIL_PATTERN);
+        Matcher matcher = pattern.matcher(email);
+        return matcher.matches();
+    }
+}

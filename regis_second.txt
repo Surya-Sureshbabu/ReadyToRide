@@ -1,0 +1,99 @@
+package com.example.user.readytorides;
+
+
+import android.content.Intent;
+import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Spinner;
+
+public class Registration_Second extends AppCompatActivity {
+    EditText qualification,address,email,contact;
+    Button save,cancel;
+    Helper helper;
+    Spinner vehicle;
+    String name,gender,dob,blood_group,aadhar,identification;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_registration__second);
+        vehicle=(Spinner)findViewById(R.id.spinner);
+        helper=new Helper(this);
+        Intent intent=getIntent();
+        name=intent.getStringExtra(helper.name);
+        gender=intent.getStringExtra(helper.gender);
+        dob=intent.getStringExtra(helper.dob);
+        blood_group=intent.getStringExtra(helper.blood_group);
+        aadhar=intent.getStringExtra(helper.aadhar);
+        identification=intent.getStringExtra(helper.identification);
+
+        qualification=(EditText)findViewById(R.id.editQual);
+        address=(EditText)findViewById(R.id.editAddress);
+        email=(EditText)findViewById(R.id.editEmail);
+        contact=(EditText)findViewById(R.id.editMobile);
+        save=(Button)findViewById(R.id.btn_save);
+        cancel=(Button)findViewById(R.id.btn_cancel);
+
+        save.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (!qualification.getText().toString().isEmpty()) {
+                    if (!address.getText().toString().isEmpty()) {
+                        if (!email.getText().toString().isEmpty()) {
+                            if (helper.isValidEmail(email.getText().toString())) {
+                                if (!contact.getText().toString().isEmpty()) {
+
+
+                                    if (helper.isvalidMobileNumber(contact.getText().toString())) {
+                                        Intent i=new Intent(Registration_Second.this,Filesupload.class);
+                                        i.putExtra(helper.qualification,qualification.getText().toString());
+                                        i.putExtra(helper.address,address.getText().toString());
+                                        i.putExtra(helper.email,email.getText().toString());
+                                        i.putExtra(helper.contact,contact.getText().toString());
+                                        i.putExtra(helper.name,name);
+                                        i.putExtra(helper.gender,gender);
+                                        i.putExtra(helper.dob,dob);
+                                        i.putExtra(helper.blood_group,blood_group);
+                                        i.putExtra(helper.identification,identification);
+                                        i.putExtra(helper.vehicle_type,vehicle.getSelectedItem().toString());
+                                        i.putExtra(helper.aadhar,aadhar);
+                                        startActivity(i);
+                                        finishActivity(0);
+                                    } else {
+                                        contact.setError("Enter a valid contact number");
+                                    }
+
+                                } else {
+                                    contact.setError("Enter contact number");
+                                }
+
+
+                            } else {
+                                email.setError("Enter a valid email id");
+                            }
+                        } else {
+                            email.setError("Enter Email Id");
+                        }
+                    } else {
+                        address.setError("Enter address");
+                    }
+                } else {
+                    qualification.setError("Enter your qualification");
+
+                }
+            }
+
+        });
+        cancel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent i=new Intent(Registration_Second.this,Registration_PersonalInfo.class);
+                startActivity(i);
+            }
+        });
+
+    }
+}
